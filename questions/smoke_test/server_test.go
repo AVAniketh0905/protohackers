@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/AVAniketh0905/protohackers/internal"
 )
@@ -23,7 +22,7 @@ func TestSmokeTest(t *testing.T) {
 	fmt.Println("client started...")
 
 	for i := range 7 {
-		time.Sleep(time.Duration((i + 1)) * time.Second)
+		// time.Sleep(time.Duration((i + 1)) * time.Second)
 		msg := []byte(fmt.Sprintf("Hello, %d ", i))
 		_, err = client.Write(msg)
 		if err != nil {

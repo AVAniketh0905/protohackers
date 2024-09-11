@@ -42,7 +42,7 @@ func RunTCP(s Server) {
 
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("l: ", err)
 	}
 	// defer l.Close()
 	log.Printf("listener started at, %v\n", addr)

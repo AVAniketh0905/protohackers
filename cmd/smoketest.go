@@ -24,11 +24,10 @@ func (SmokeTest) Handler(_ context.Context, conn net.Conn) {
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if err == io.EOF {
+			if err != io.EOF {
 				log.Println(err)
-				return
 			}
-			log.Fatal(err)
+			break
 		}
 
 		log.Println("read data successfully...", buf[:n])
