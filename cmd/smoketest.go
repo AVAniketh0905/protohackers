@@ -1,4 +1,4 @@
-package smoketest
+package cmd
 
 import (
 	"context"

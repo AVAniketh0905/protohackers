@@ -45,7 +45,7 @@ func RunTCP(s Server) {
 		log.Fatal(err)
 	}
 	// defer l.Close()
-	log.Println("listener started...")
+	log.Printf("listener started at, %v\n", addr)
 
 	for {
 		conn, err := l.Accept()

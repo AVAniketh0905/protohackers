@@ -1,9 +1,9 @@
 package main
 
 import (
-	smoketest "github.com/AVAniketh0905/protohackers/smoke_test"
+	"github.com/AVAniketh0905/protohackers/cmd"
 )
 
 func main() {
-	smoketest.Run()
+	cmd.Run()
 }

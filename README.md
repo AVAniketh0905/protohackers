@@ -2,6 +2,8 @@
 
 ## 1. Smoke Test
 
+[Code](./questions/smoke_test)
+
 ### Problem
 
 - TCP Echo Server

@@ -22,7 +22,7 @@ func TestSmokeTest(t *testing.T) {
 	defer client.Close()
 	fmt.Println("client started...")
 
-	for i := range 5 {
+	for i := range 7 {
 		time.Sleep(time.Duration((i + 1)) * time.Second)
 		msg := []byte(fmt.Sprintf("Hello, %d ", i))
 		_, err = client.Write(msg)
