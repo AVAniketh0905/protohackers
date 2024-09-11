@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	smoketest "github.com/AVAniketh0905/protohackers/smoke_test"
+)
 
 func main() {
-	fmt.Println("Hello world!")
+	smoketest.Run()
 }
