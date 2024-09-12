@@ -41,11 +41,11 @@ func (SmokeTest) Handler(_ context.Context, conn net.Conn) {
 	}
 }
 
-func Run() {
-	cfg := internal.NewConfig(internal.PORT)
-	cfg.ParseFlags()
+// func Run() {
+// 	cfg := internal.NewConfig(internal.PORT)
+// 	cfg.ParseFlags()
 
-	s := SmokeTest{cfg}
+// 	s := SmokeTest{cfg}
 
-	internal.RunTCP(s)
-}
+// 	internal.RunTCP(s)
+// }
