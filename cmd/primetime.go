@@ -66,6 +66,7 @@ func (PrimeTime) Handler(_ context.Context, conn net.Conn) {
 		if err != nil {
 			log.Fatalf("failed to marshal json resp, %v", err)
 		}
+		respBytes = append(respBytes, '\n')
 
 		_, err = conn.Write(respBytes)
 		if err != nil {
