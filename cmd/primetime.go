@@ -75,11 +75,11 @@ func (PrimeTime) Handler(_ context.Context, conn net.Conn) {
 	}
 }
 
-func Run() {
-	cfg := internal.NewConfig(internal.PORT)
-	cfg.ParseFlags()
+// func Run() {
+// 	cfg := internal.NewConfig(internal.PORT)
+// 	cfg.ParseFlags()
 
-	s := PrimeTime{cfg}
+// 	s := PrimeTime{cfg}
 
-	internal.RunTCP(s)
-}
+// 	internal.RunTCP(s)
+// }
