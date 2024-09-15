@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/AVAniketh0905/protohackers/cmd"
@@ -26,6 +27,40 @@ var reqs []struct {
 		Char: "I",
 		Num1: 12345,
 		Num2: 101,
+	}},
+	{"490000a00000000005", cmd.BinReq{
+		Char: "I",
+		Num1: 40960,
+		Num2: 5,
+	}},
+	{"510000300000004000", cmd.BinReq{
+		Char: "Q",
+		Num1: 12288,
+		Num2: 16384,
+	}},
+}
+
+var testReqs []struct {
+	hex       string
+	actualReq cmd.BinReq
+} = []struct {
+	hex       string
+	actualReq cmd.BinReq
+}{
+	{"490000303900000065", cmd.BinReq{
+		Char: "I",
+		Num1: 12345,
+		Num2: 101,
+	}},
+	{"490000303a00000066", cmd.BinReq{
+		Char: "I",
+		Num1: 12346,
+		Num2: 102,
+	}},
+	{"490000303b00000064", cmd.BinReq{
+		Char: "I",
+		Num1: 12347,
+		Num2: 100,
 	}},
 	{"490000a00000000005", cmd.BinReq{
 		Char: "I",
@@ -65,20 +100,27 @@ func TestTCPServer(t *testing.T) {
 	defer client.Close()
 	fmt.Println("client started...")
 
-	for _, req := range reqs {
+	for _, req := range testReqs {
 		_, err := client.Write([]byte(req.hex))
 		if err != nil {
 			t.Error(err)
 		}
 
-		buf := make([]byte, 4096)
-		n, err := client.Read(buf)
-		if err != nil {
-			t.Error(err)
-		}
+		if req.actualReq.Char == "Q" {
+			buf := make([]byte, 4096)
+			n, err := client.Read(buf)
+			if err != nil {
+				t.Error(err)
+			}
 
-		if !reflect.DeepEqual(string(buf[:n]), req.actualReq.Char) {
-			t.Errorf("incorrect data received, got: %v, actual: %v", string(buf[:n]), req.actualReq.Char)
+			ans, err := strconv.ParseInt(string(buf[:n]), 16, 32)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if ans != 101 {
+				t.Errorf("answer does not match, got: %d, actual: %d", ans, 101)
+			}
 		}
 	}
 }

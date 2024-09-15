@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"sort"
 	"strconv"
 
 	"github.com/AVAniketh0905/protohackers/internal"
@@ -65,9 +66,32 @@ func (b Binary) Unmarshall(req *BinReq) error {
 
 type MeansToEnd struct{ *internal.Config }
 
+type data struct {
+	timestamp int32
+	price     int32
+}
+
+type DB []data
+
+func query(db DB, minTime, maxTime int32) int32 {
+	res, size := int32(0), 0
+	for _, row := range db {
+		if row.timestamp >= minTime && row.timestamp <= maxTime {
+			// log.Println(minTime, maxTime, row.timestamp)
+			res += row.price
+			size += 1
+		}
+	}
+
+	// log.Println(res, size, res/int32(size))
+	return res / int32(size)
+}
+
 func (MeansToEnd) Setup() context.Context { return context.TODO() }
 
 func (MeansToEnd) Handler(_ context.Context, conn net.Conn) {
+	store := DB{}
+
 	for {
 		buf := make([]byte, 4096)
 		n, err := conn.Read(buf)
@@ -78,17 +102,30 @@ func (MeansToEnd) Handler(_ context.Context, conn net.Conn) {
 			break
 		}
 
-		var req BinReq
-		hexStr := Binary(buf[:n])
-		err = hexStr.Unmarshall(&req)
-		if err != nil {
-			log.Fatal(err)
-		}
+		for cnt := 18; cnt <= n; cnt += 18 {
+			var req BinReq
+			hexStr := Binary(buf[cnt-18 : cnt])
+			err = hexStr.Unmarshall(&req)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		log.Println(req)
-		_, err = conn.Write([]byte(req.Char))
-		if err != nil {
-			log.Fatal(err)
+			// log.Println(req)
+
+			if req.Char == "I" {
+				store = append(store, data{req.Num1, req.Num2})
+				sort.Slice(store, func(i, j int) bool {
+					return store[i].timestamp < store[j].timestamp
+				})
+			} else if req.Char == "Q" {
+				ans := query(store, req.Num1, req.Num2)
+				hexAns := fmt.Sprintf("%x", ans)
+
+				_, err = conn.Write([]byte(hexAns))
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
 		}
 	}
 }
