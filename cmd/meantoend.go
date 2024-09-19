@@ -130,11 +130,11 @@ func (MeansToEnd) Handler(_ context.Context, conn net.Conn) {
 	}
 }
 
-func Run() {
-	cfg := internal.NewConfig(internal.PORT)
-	cfg.ParseFlags()
+// func Run() {
+// 	cfg := internal.NewConfig(internal.PORT)
+// 	cfg.ParseFlags()
 
-	s := MeansToEnd{cfg}
+// 	s := MeansToEnd{cfg}
 
-	internal.RunTCP(s)
-}
+// 	internal.RunTCP(s)
+// }
