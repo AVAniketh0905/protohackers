@@ -15,11 +15,10 @@ func receive(client net.Conn, wg *sync.WaitGroup) {
 	for {
 		msg, err := bufio.NewReader(client).ReadString('\n')
 		if err != nil {
-			if err == io.EOF {
+			if err != io.EOF {
 				log.Println("Server closed the connection.")
-				break
 			}
-			log.Fatal("Error receiving message:", err)
+			break
 		}
 		log.Println("Message from server:", msg)
 	}
@@ -31,7 +30,10 @@ func write(client net.Conn, wg *sync.WaitGroup) {
 	for {
 		msg, err := reader.ReadString('\n')
 		if err != nil {
-			log.Fatal("Error reading input:", err)
+			if err != io.EOF {
+				log.Fatal("Error reading input:", err)
+			}
+			break
 		}
 
 		_, err = client.Write([]byte(msg))
@@ -51,7 +53,10 @@ func Run() {
 	buf := make([]byte, 1024)
 	n, err := client.Read(buf)
 	if err != nil {
-		log.Fatal(err)
+		if err != io.EOF {
+			log.Fatal(err)
+		}
+		return
 	}
 
 	log.Println(string(buf[:n]))
@@ -64,6 +69,17 @@ func Run() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	buf = make([]byte, 1024)
+	n, err = client.Read(buf)
+	if err != nil {
+		if err != io.EOF {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	log.Println(string(buf[:n]))
 
 	var wg sync.WaitGroup
 
