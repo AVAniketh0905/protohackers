@@ -134,12 +134,12 @@ func (BudgetChat) Handler(_ context.Context, conn net.Conn) {
 	}
 }
 
-func Run() {
-	cfg := internal.NewConfig(internal.PORT)
-	cfg.ParseFlags()
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+// func Run() {
+// 	cfg := internal.NewConfig(internal.PORT)
+// 	cfg.ParseFlags()
+// 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	s := BudgetChat{cfg}
+// 	s := BudgetChat{cfg}
 
-	internal.RunTCP(s)
-}
+// 	internal.RunTCP(s)
+// }

@@ -33,10 +33,32 @@ type Server interface {
 	Configuration
 
 	Setup() context.Context
+}
+
+type TCPServer interface {
+	Server
 	Handler(ctx context.Context, conn net.Conn)
 }
 
-func RunTCP(s Server) {
+type UDPServer interface {
+	Server
+	Handler(ctx context.Context, conn net.PacketConn)
+}
+
+func RunUDP(s UDPServer) {
+	addr := s.Addr()
+	ctx := s.Setup()
+
+	conn, err := net.ListenPacket("udp", addr)
+	if err != nil {
+		log.Fatal("l: ", err)
+	}
+	log.Printf("listener started at, %v\n", addr)
+
+	s.Handler(ctx, conn)
+}
+
+func RunTCP(s TCPServer) {
 	addr := s.Addr()
 	ctx := s.Setup()
 
