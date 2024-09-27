@@ -66,11 +66,11 @@ func (u UnusualDB) Handler(_ context.Context, conn net.PacketConn) {
 	}
 }
 
-func Run() {
-	cfg := internal.NewConfig(internal.PORT)
-	cfg.ParseFlags()
+// func Run() {
+// 	cfg := internal.NewConfig(internal.PORT)
+// 	cfg.ParseFlags()
 
-	s := UnusualDB{cfg}
+// 	s := UnusualDB{cfg}
 
-	internal.RunUDP(s)
-}
+// 	internal.RunUDP(s)
+// }
