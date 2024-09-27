@@ -46,4 +46,22 @@ func TestUnusualDB(t *testing.T) {
 			t.Errorf("the response does not match, expected %v, got %v", fmt.Sprintf("%v=%v", k, values[i]), string(buf[:n]))
 		}
 	}
+
+	// check version
+	word := "version"
+	value := "version=Ken's Key-Value Store 1.0"
+	_, err = client.Write([]byte(word))
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf := make([]byte, 1024)
+	n, err := client.Read(buf)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !reflect.DeepEqual(string(buf[:n]), value) {
+		t.Errorf("the response does not match, expected %v, got %v", value, string(buf[:n]))
+	}
 }

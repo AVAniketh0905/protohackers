@@ -34,25 +34,33 @@ func (u UnusualDB) Handler(_ context.Context, conn net.PacketConn) {
 		strBuf := string(buf[:n])
 		log.Println(strBuf)
 
-		if strings.Contains(strBuf, "=") {
-			//insert
-			key, value, _ := strings.Cut(strBuf, "=")
-			dataMap.Store(key, value)
-		} else {
-			// retrieves
-			var res string
-			val, ok := dataMap.Load(strBuf)
-			if !ok {
-				res = fmt.Sprintf("%v=", strBuf)
-			} else {
-				res = fmt.Sprintf("%v=%v", strBuf, val)
-			}
-
-			log.Println("response", res)
-
-			_, err := conn.WriteTo([]byte(res), clientAddr)
+		if strings.Contains(strBuf, "version") {
+			msg := "version=Ken's Key-Value Store 1.0"
+			_, err := conn.WriteTo([]byte(msg), clientAddr)
 			if err != nil {
 				log.Fatal(clientAddr, err)
+			}
+		} else {
+			if strings.Contains(strBuf, "=") {
+				//insert
+				key, value, _ := strings.Cut(strBuf, "=")
+				dataMap.Store(key, value)
+			} else {
+				// retrieves
+				var res string
+				val, ok := dataMap.Load(strBuf)
+				if !ok {
+					res = fmt.Sprintf("%v=", strBuf)
+				} else {
+					res = fmt.Sprintf("%v=%v", strBuf, val)
+				}
+
+				log.Println("response", res)
+
+				_, err := conn.WriteTo([]byte(res), clientAddr)
+				if err != nil {
+					log.Fatal(clientAddr, err)
+				}
 			}
 		}
 	}
