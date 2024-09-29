@@ -43,7 +43,9 @@ func (b BogusCoin) Handler(ctx context.Context, conn net.Conn) {
 		for r := bufio.NewReader(src); ; {
 			msg, err := r.ReadString('\n')
 			if err != nil {
-				// log.Fatal(err)
+				if err != io.EOF {
+					log.Fatal(err)
+				}
 				return
 			}
 
@@ -64,11 +66,11 @@ func (b BogusCoin) Handler(ctx context.Context, conn net.Conn) {
 	proxy(server, conn)
 }
 
-func Run() {
-	cfg := internal.NewConfig(internal.PORT)
-	cfg.ParseFlags()
+// func Run() {
+// 	cfg := internal.NewConfig(internal.PORT)
+// 	cfg.ParseFlags()
 
-	s := BogusCoin{cfg}
+// 	s := BogusCoin{cfg}
 
-	internal.RunTCP(s)
-}
+// 	internal.RunTCP(s)
+// }
