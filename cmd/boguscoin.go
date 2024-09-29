@@ -4,86 +4,64 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/AVAniketh0905/protohackers/internal"
 )
 
 type BogusCoin struct{ *internal.Config }
 
-type chatServer struct {
-	server net.Conn
-}
-
-type chatStr string
-
 const bogusTonyAddr string = "7YWHMfk9JZe0LM0g1ZauHuiSxhI"
 
-func NewChatServer(addr string, port int32) *chatServer {
-	addr = fmt.Sprintf("%v:%v", addr, port)
+var boguscoin = regexp.MustCompile(`^7[a-zA-Z0-9]{25,34}$`)
+
+func (b BogusCoin) Setup() context.Context {
+	return context.TODO()
+}
+
+func (b BogusCoin) Handler(ctx context.Context, conn net.Conn) {
+	defer conn.Close()
+	addr := fmt.Sprintf("%v:%v", "chat.protohackers.com", 16963)
 	server, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return &chatServer{
-		server: server,
-	}
-}
+	once := sync.Once{}
+	proxy := func(dst io.WriteCloser, src io.ReadCloser) {
+		defer once.Do(func() {
+			dst.Close()
+			src.Close()
+			log.Printf("closed connection: %v", addr)
+		})
 
-func (cs *chatServer) Read(p []byte) (n int, err error) {
-	n, err = cs.server.Read(p)
-	return
-}
-
-func (cs *chatServer) Write(p []byte) (n int, err error) {
-	n, err = cs.server.Write(p)
-	return
-}
-
-func (b BogusCoin) Setup() context.Context {
-	key := chatStr("srv")
-	server := NewChatServer("chat.protohackers.com", 16963)
-	ctx := context.WithValue(context.TODO(), key, server)
-	return ctx
-}
-
-func (b BogusCoin) Handler(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
-	parentAny := ctx.Value(chatStr("srv"))
-	parentSrv, ok := parentAny.(chatServer)
-	if !ok {
-		log.Fatal("incorrect values in parent server")
-	}
-
-	for {
-		reqStr, err := bufio.NewReader(conn).ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// handle malicious logic
-		reqStr = strings.ReplaceAll(reqStr, "\n", "")
-		strSplit := strings.Split(reqStr, " ")
-
-		for i, v := range strSplit {
-			if string(v[0]) != "7" {
-				continue
+		for r := bufio.NewReader(src); ; {
+			msg, err := r.ReadString('\n')
+			if err != nil {
+				// log.Fatal(err)
+				return
 			}
 
-			// TODO: other checks
+			tokens := make([]string, 0, 8)
+			for _, raw := range strings.Split(msg[:len(msg)-1], " ") {
+				t := boguscoin.ReplaceAllString(raw, bogusTonyAddr)
+				tokens = append(tokens, t)
+			}
 
-			strSplit[i] = bogusTonyAddr
-		}
-
-		reqStr = strings.Join(strSplit, " ") + "\n"
-		_, err = parentSrv.Write([]byte(reqStr))
-		if err != nil {
-			log.Fatal(err)
+			newMsg := strings.Join(tokens, " ") + "\n"
+			if _, err := dst.Write([]byte(newMsg)); err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
+
+	go proxy(conn, server)
+	proxy(server, conn)
 }
 
 func Run() {

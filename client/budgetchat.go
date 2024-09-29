@@ -45,6 +45,7 @@ func write(client net.Conn, wg *sync.WaitGroup) {
 
 func Run() {
 	client, err := net.Dial("tcp", "localhost:8080")
+	// client, err := net.Dial("tcp", "chat.protohackers.com:16963")
 	if err != nil {
 		log.Fatal(err)
 	}
