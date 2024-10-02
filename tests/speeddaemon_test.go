@@ -127,5 +127,8 @@ func TestMsgTypes(t *testing.T) {
 			t.Errorf("msgs did not match, expected %v, got %v", ticketMsgs[i].speed, ticket.Speed)
 		}
 	}
+}
 
+func TestServer(t *testing.T) {
+	// TODO
 }

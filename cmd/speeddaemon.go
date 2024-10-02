@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/AVAniketh0905/protohackers/internal"
@@ -395,6 +397,79 @@ func (d IAmDispatcher) Marshall() (data []byte, err error) {
 func (sd SpeedDeamon) Setup() context.Context { return context.TODO() }
 
 func (sd SpeedDeamon) Handler(ctx context.Context, conn net.Conn) {
+	defer conn.Close()
+
+	for {
+		sc := bufio.NewScanner(conn)
+		for sc.Scan() {
+			data := sc.Bytes()
+
+			switch MsgType(data[0]) {
+			case PlateType:
+				var plateMsg Plate
+				err := plateMsg.Unmarshall(data)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				log.Println("plate: ", plateMsg)
+			case IAmCameraType:
+				var camMsg IAmCamera
+				err := camMsg.Unmarshall(data)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				log.Println("camera: ", camMsg)
+			case IAmDispatcherType:
+				var dispatcherMsg IAmDispatcher
+				err := dispatcherMsg.Unmarshall(data)
+				if err != nil {
+					log.Println(err)
+				}
+
+				log.Println("ticket dispatcher: ", dispatcherMsg)
+
+				var ticket Ticket // TODO: sample msg
+				ticket.Plate = Str{Len: 4, Msg: []byte("UN1X")}
+				ticket.Road = 123
+				ticket.Mile1 = 8
+				ticket.Timestamp1 = 0
+				ticket.Mile2 = 9
+				ticket.Timestamp1 = 45
+				ticket.Speed = ((ticket.Mile2 - ticket.Mile1) / (uint16(ticket.Timestamp2) - uint16(ticket.Timestamp1)) * 3600)
+
+				tick, err := ticket.Marshall()
+				if err != nil {
+					log.Fatal(err)
+				}
+				_, err = conn.Write(tick)
+				if err != nil {
+					log.Fatal(err)
+				}
+			default: // ErrorType
+				msg := []byte("illegal msg")
+				errMsg := Error{
+					err: Str{
+						Len: uint8(len(msg)),
+						Msg: msg,
+					},
+				}
+
+				data, err := errMsg.Marshall()
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				_, err = conn.Write(data)
+				if err != nil {
+					log.Fatal(err)
+				}
+				log.Println("terminating exsisting connection...")
+				return
+			}
+		}
+	}
 }
 
 func Run() {
