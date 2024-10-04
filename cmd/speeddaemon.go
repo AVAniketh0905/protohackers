@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"net"
 
@@ -65,7 +65,6 @@ type Message interface {
 }
 
 type Error struct {
-	Message
 	err Str
 }
 
@@ -115,7 +114,6 @@ func (e Error) Marshall() (p []byte, err error) {
 }
 
 type Plate struct {
-	Message
 	Plate     Str
 	Timestamp uint32
 }
@@ -165,13 +163,12 @@ func (p Plate) Marshall() (data []byte, err error) {
 		return nil, err
 	}
 	data = append(data, plateStr...)
-	binary.BigEndian.PutUint32(data, p.Timestamp)
+	binary.BigEndian.AppendUint32(data, p.Timestamp)
 
 	return data, nil
 }
 
 type Ticket struct {
-	Message
 	Plate      Str
 	Road       uint16
 	Mile1      uint16
@@ -231,7 +228,6 @@ func (t *Ticket) Unmarshall(data []byte) error {
 	m += 4
 
 	t.Speed = binary.BigEndian.Uint16(rmgBytes[m:n])
-
 	return nil
 }
 
@@ -242,17 +238,16 @@ func (t Ticket) Marshall() (data []byte, err error) {
 		return nil, err
 	}
 	data = append(data, plateStr...)
-	binary.BigEndian.PutUint16(data, t.Road)
-	binary.BigEndian.PutUint16(data, t.Mile1)
-	binary.BigEndian.PutUint32(data, t.Timestamp1)
-	binary.BigEndian.PutUint16(data, t.Mile2)
-	binary.BigEndian.PutUint32(data, t.Timestamp2)
-	binary.BigEndian.PutUint16(data, t.Speed)
+	data = binary.BigEndian.AppendUint16(data, t.Road)
+	data = binary.BigEndian.AppendUint16(data, t.Mile1)
+	data = binary.BigEndian.AppendUint32(data, t.Timestamp1)
+	data = binary.BigEndian.AppendUint16(data, t.Mile2)
+	data = binary.BigEndian.AppendUint32(data, t.Timestamp2)
+	data = binary.BigEndian.AppendUint16(data, t.Speed)
 	return data, nil
 }
 
 type WantHeartBeat struct {
-	Message
 	Interval uint32
 }
 
@@ -284,7 +279,7 @@ func (whb *WantHeartBeat) Unmarshall(data []byte) error {
 
 func (whb WantHeartBeat) Marshall() (data []byte, err error) {
 	data = append(data, byte(whb.Type()))
-	binary.BigEndian.PutUint32(data, whb.Interval)
+	data = binary.BigEndian.AppendUint32(data, whb.Interval)
 	return data, nil
 }
 
@@ -296,7 +291,6 @@ func (hb HeartBeat) Type() MsgType {
 }
 
 type IAmCamera struct {
-	Message
 	Road  uint16
 	Mile  uint16
 	Limit uint16 // miles per hour
@@ -323,13 +317,14 @@ func (c *IAmCamera) Unmarshall(data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	m := 0
 
-	c.Road = binary.BigEndian.Uint16(rmgBytes[m : m+4])
-	m += 4
+	c.Road = binary.BigEndian.Uint16(rmgBytes[m : m+2])
+	m += 2
 
-	c.Mile = binary.BigEndian.Uint16(rmgBytes[m : m+4])
-	m += 4
+	c.Mile = binary.BigEndian.Uint16(rmgBytes[m : m+2])
+	m += 2
 
 	c.Limit = binary.BigEndian.Uint16(rmgBytes[m:n])
 
@@ -338,14 +333,13 @@ func (c *IAmCamera) Unmarshall(data []byte) error {
 
 func (c IAmCamera) Marshall() (data []byte, err error) {
 	data = append(data, byte(c.Type()))
-	binary.BigEndian.PutUint16(data, c.Road)
-	binary.BigEndian.PutUint16(data, c.Mile)
-	binary.BigEndian.PutUint16(data, c.Limit)
+	data = binary.BigEndian.AppendUint16(data, c.Road)
+	data = binary.BigEndian.AppendUint16(data, c.Mile)
+	data = binary.BigEndian.AppendUint16(data, c.Limit)
 	return data, nil
 }
 
 type IAmDispatcher struct {
-	Message
 	NumRoads uint8
 	Roads    []uint16
 }
@@ -373,15 +367,14 @@ func (d *IAmDispatcher) Unmarshall(data []byte) error {
 	}
 	m := 0
 
-	d.NumRoads = uint8(rmgBytes[1])
+	d.NumRoads = rmgBytes[0]
 	m += 1
 
 	for range d.NumRoads {
-		road := binary.BigEndian.Uint16(rmgBytes[m : m+4])
+		road := binary.BigEndian.Uint16(rmgBytes[m : m+2])
 		d.Roads = append(d.Roads, road)
-		m += 4
+		m += 2
 	}
-
 	return nil
 }
 
@@ -389,7 +382,7 @@ func (d IAmDispatcher) Marshall() (data []byte, err error) {
 	data = append(data, byte(d.Type()))
 	data = append(data, byte(d.NumRoads))
 	for i := range d.NumRoads {
-		binary.BigEndian.PutUint16(data, d.Roads[i])
+		data = binary.BigEndian.AppendUint16(data, d.Roads[i])
 	}
 	return data, nil
 }
@@ -400,74 +393,82 @@ func (sd SpeedDeamon) Handler(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
 	for {
-		sc := bufio.NewScanner(conn)
-		for sc.Scan() {
-			data := sc.Bytes()
-
-			switch MsgType(data[0]) {
-			case PlateType:
-				var plateMsg Plate
-				err := plateMsg.Unmarshall(data)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				log.Println("plate: ", plateMsg)
-			case IAmCameraType:
-				var camMsg IAmCamera
-				err := camMsg.Unmarshall(data)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				log.Println("camera: ", camMsg)
-			case IAmDispatcherType:
-				var dispatcherMsg IAmDispatcher
-				err := dispatcherMsg.Unmarshall(data)
-				if err != nil {
-					log.Println(err)
-				}
-
-				log.Println("ticket dispatcher: ", dispatcherMsg)
-
-				var ticket Ticket // TODO: sample msg
-				ticket.Plate = Str{Len: 4, Msg: []byte("UN1X")}
-				ticket.Road = 123
-				ticket.Mile1 = 8
-				ticket.Timestamp1 = 0
-				ticket.Mile2 = 9
-				ticket.Timestamp1 = 45
-				ticket.Speed = ((ticket.Mile2 - ticket.Mile1) / (uint16(ticket.Timestamp2) - uint16(ticket.Timestamp1)) * 3600)
-
-				tick, err := ticket.Marshall()
-				if err != nil {
-					log.Fatal(err)
-				}
-				_, err = conn.Write(tick)
-				if err != nil {
-					log.Fatal(err)
-				}
-			default: // ErrorType
-				msg := []byte("illegal msg")
-				errMsg := Error{
-					err: Str{
-						Len: uint8(len(msg)),
-						Msg: msg,
-					},
-				}
-
-				data, err := errMsg.Marshall()
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				_, err = conn.Write(data)
-				if err != nil {
-					log.Fatal(err)
-				}
-				log.Println("terminating exsisting connection...")
-				return
+		buf := make([]byte, 1024)
+		n, err := conn.Read(buf)
+		if err != nil {
+			if err != io.EOF {
+				log.Fatal(err)
 			}
+			break
+		}
+
+		var data []byte = buf[:n]
+		log.Println("data: ", data)
+
+		switch MsgType(data[0]) {
+		case PlateType:
+			var plateMsg Plate
+			err := plateMsg.Unmarshall(data)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Println("plate: ", plateMsg)
+		case IAmCameraType:
+			var camMsg IAmCamera
+			err := camMsg.Unmarshall(data)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Println("camera: ", camMsg)
+		case IAmDispatcherType:
+			var dispatcherMsg IAmDispatcher
+			err := dispatcherMsg.Unmarshall(data)
+			if err != nil {
+				log.Println(err)
+			}
+
+			log.Println("ticket dispatcher: ", dispatcherMsg)
+
+			var ticket Ticket // TODO: sample msg
+			ticket.Plate = Str{Len: 4, Msg: []byte("UN1X")}
+			ticket.Road = 123
+			ticket.Mile1 = 8
+			ticket.Timestamp1 = 0
+			ticket.Mile2 = 9
+			ticket.Timestamp1 = 45
+			ticket.Speed = ((ticket.Mile2 - ticket.Mile1) / (uint16(ticket.Timestamp2) - uint16(ticket.Timestamp1)) * 3600)
+
+			tick, err := ticket.Marshall()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			_, err = conn.Write(tick)
+			if err != nil {
+				log.Fatal(err)
+			}
+		default: // ErrorType
+			msg := []byte("illegal msg")
+			errMsg := Error{
+				err: Str{
+					Len: uint8(len(msg)),
+					Msg: msg,
+				},
+			}
+
+			data, err := errMsg.Marshall()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			_, err = conn.Write(data)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Println("terminating exsisting connection...")
+			return
 		}
 	}
 }

@@ -2,10 +2,14 @@ package tests
 
 import (
 	"encoding/hex"
+	"log"
+	"net"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/AVAniketh0905/protohackers/cmd"
+	"github.com/AVAniketh0905/protohackers/internal"
 )
 
 func TestStr(t *testing.T) {
@@ -129,6 +133,77 @@ func TestMsgTypes(t *testing.T) {
 	}
 }
 
+func TestCameraType(t *testing.T) {
+	hexMsgs := []string{"80007b0008003c"}
+	camMsgs := []struct {
+		road  uint16
+		mile  uint16
+		limit uint16
+	}{
+		{road: 123, mile: 6, limit: 60},
+	}
+
+	for i, hm := range hexMsgs {
+		hexBytes, err := hex.DecodeString(hm)
+		if err != nil {
+			t.Error(err)
+		}
+		var camMsg cmd.IAmCamera
+		err = camMsg.Unmarshall(hexBytes)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !reflect.DeepEqual(camMsg.Road, camMsgs[i].road) {
+			t.Errorf("msgs did not match, expected %d, got %d", camMsgs[i], camMsg)
+		}
+	}
+}
+
 func TestServer(t *testing.T) {
 	// TODO
+	cfg := internal.NewConfig(internal.PORT)
+	cfg.ParseFlags()
+
+	client1, err := net.Dial("tcp", cfg.Addr())
+	if err != nil {
+		t.Error(err)
+	}
+
+	c1Msgs := []string{
+		"80007b0008003c",
+		"2004554e315800000000",
+		"80007b0009003c",
+		"2004554e31580000002d",
+		"8101007b",
+	}
+
+	for _, msg := range c1Msgs {
+		data, err := hex.DecodeString(msg)
+		if err != nil {
+			t.Error(err)
+		}
+		log.Println("Msg: ", msg, data)
+		_, err = client1.Write(data)
+		if err != nil {
+			t.Error(err)
+		}
+		time.Sleep(time.Second)
+	}
+	time.Sleep(time.Second)
+
+	// get ticket
+	buf := make([]byte, 1024)
+	n, err := client1.Read(buf)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var ticket cmd.Ticket
+	err = ticket.Unmarshall(buf[:n])
+	if err != nil {
+		t.Error(err)
+	}
+
+	log.Println(ticket)
 }
